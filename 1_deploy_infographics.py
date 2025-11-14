@@ -1286,10 +1286,12 @@ def main() -> None:
                 url_inputs.append(col.text_input(f"Or Paste Image {idx} URL", key=f"url_{idx}"))
 
         category = st.selectbox("Select Category", options=categories_list, index=0, key="category_select")
-        custom_cat_value = ""
+        custom_cat_value = st.text_input(
+            f"Custom Category (used when {CUSTOM_CATEGORY_OPTION} selected)",
+            key="custom_category",
+            placeholder="Type your custom category here",
+        )
         use_custom_category = category in CUSTOM_CATEGORY_MATCHES
-        if use_custom_category:
-            custom_cat_value = st.text_input(f"Custom Category (if {CUSTOM_CATEGORY_OPTION})", key="custom_category")
         description = st.text_area("Description", key="description_text", height=80)
         submitted = st.form_submit_button(" Generate Infographics")
 
