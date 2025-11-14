@@ -125,7 +125,12 @@ S3_INPUT_PREFIX = f"{S3_BASE_PREFIX}/inputs"
 S3_OUTPUT_PREFIX = f"{S3_BASE_PREFIX}/outputs"
 LOG_RUNS_PREFIX = os.environ.get("S3_LOG_RUNS_PREFIX", f"{S3_BASE_PREFIX}/logs/runs")
 LOG_FEEDBACK_PREFIX = os.environ.get("S3_LOG_FEEDBACK_PREFIX", f"{S3_BASE_PREFIX}/logs/feedback")
-S3_EXCEL_KEY = os.environ.get("S3_EXCEL_KEY", f"{S3_BASE_PREFIX}/logs/1_infographics_llm_eval.xlsx")
+DEFAULT_INFOGRAPHICS_EXCEL = f"{S3_BASE_PREFIX}/logs/1_infographics_llm_eval.xlsx"
+S3_EXCEL_KEY = (
+    os.environ.get("S3_INFOGRAPHICS_EXCEL_KEY")
+    or os.environ.get("S3_EXCEL_KEY")
+    or DEFAULT_INFOGRAPHICS_EXCEL
+)
 
 if not S3_BUCKET_NAME:
     raise ValueError("S3_BUCKET_NAME must be set for storage.")
