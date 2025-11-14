@@ -417,6 +417,7 @@ MODELS = [
 ]
 
 MAX_REFERENCE_IMAGES = 3
+CUSTOM_CATEGORY_OPTION = "Others"
 categories_list = [
     "Accessories & Supplies",
     "Additive Manufacturing Products",
@@ -661,8 +662,9 @@ categories_list = [
     "Xbox 360 Games, Consoles & Accessories",
     "Xbox One Games, Consoles & Accessories",
     "Xbox Series X & S Consoles, Games & Accessories",
-    "Other",
+    CUSTOM_CATEGORY_OPTION,
 ]
+CUSTOM_CATEGORY_MATCHES = {CUSTOM_CATEGORY_OPTION, "Other"}
 
 
 def log_entry(entry: List[Any]) -> None:
@@ -1285,8 +1287,9 @@ def main() -> None:
 
         category = st.selectbox("Select Category", options=categories_list, index=0, key="category_select")
         custom_cat_value = ""
-        if category == "Other":
-            custom_cat_value = st.text_input("Custom Category (if Other)", key="custom_category")
+        use_custom_category = category in CUSTOM_CATEGORY_MATCHES
+        if use_custom_category:
+            custom_cat_value = st.text_input(f"Custom Category (if {CUSTOM_CATEGORY_OPTION})", key="custom_category")
         description = st.text_area("Description", key="description_text", height=80)
         submitted = st.form_submit_button(" Generate Infographics")
 
@@ -1299,7 +1302,11 @@ def main() -> None:
             if img is not None:
                 collected.append(img)
 
-        final_category = (custom_cat_value.strip() if category == "Other" and custom_cat_value else category) or "Other"
+        final_category = (
+            custom_cat_value.strip()
+            if use_custom_category and custom_cat_value
+            else category
+        ) or CUSTOM_CATEGORY_OPTION
         if not collected:
             update_status_text(" Please upload at least one image or provide a valid image URL.")
             st.warning("Please upload at least one image or provide a valid image URL.")
