@@ -15,5 +15,5 @@ requests
 python-dotenv
 langchain-core
 numpy
-#byteplus-python-sdk-v2
+byteplus-python-sdk-v2
 #byteplussdkarkruntime
