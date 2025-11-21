@@ -93,6 +93,17 @@ else:
 
     gclient = _GenAIFallbackClient()
 
+REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN") or os.environ.get("replicate")
+REPLICATE_MODEL_IDS = {
+    "qwen/qwen-image-edit": "qwen/qwen-image-edit",
+    "qwen/qwen-image-edit-plus": "qwen/qwen-image-edit-plus",
+    "black-forest-labs/flux-pro": "black-forest-labs/flux-pro",
+    "black-forest-labs/flux-kontext-max": "black-forest-labs/flux-kontext-max",
+    "black-forest-labs/flux-kontext-pro": "black-forest-labs/flux-kontext-pro",
+    "ideogram-ai/ideogram-v3-turbo": "ideogram-ai/ideogram-v3-turbo",
+    "qwen/qwen-image": "qwen/qwen-image",
+}
+
 ARK_API_KEY = os.environ.get("ARK_API_KEY") or None
 
 SEEDREAM_ENDPOINT = "https://ark.ap-southeast.bytepluses.com/api/v3/images/generate"
@@ -417,9 +428,34 @@ MODELS = [
     "gpt-image-1",
     "gpt-image-1-mini",
     "gemini-2.5-flash-image",
+    "gemini-3-pro-image-preview",
+    "qwen/qwen-image-edit",
+    "qwen/qwen-image-edit-plus",
+    "black-forest-labs/flux-kontext-max",
+    "black-forest-labs/flux-kontext-pro",
+    "black-forest-labs/flux-pro",
+    "ideogram-ai/ideogram-v3-turbo",
+    "qwen/qwen-image",
     "seedream-4",
     "seededit-3-0-i2i-250628",
 ]
+
+# Optional per-model prompt overrides. Leave entries empty or remove keys to use the main prompt.
+MODEL_PROMPT_OVERRIDES: Dict[str, str] = {}
+# Uncomment and set any of the lines below to override that model's prompt:
+# MODEL_PROMPT_OVERRIDES["gpt-image-1"] = "Custom prompt for gpt-image-1"
+# MODEL_PROMPT_OVERRIDES["gpt-image-1-mini"] = "Custom prompt for gpt-image-1-mini"
+# MODEL_PROMPT_OVERRIDES["gemini-2.5-flash-image"] = "Custom prompt for gemini-2.5-flash-image"
+# MODEL_PROMPT_OVERRIDES["gemini-3-pro-image-preview"] = "Custom prompt for gemini-3-pro-image-preview"
+# MODEL_PROMPT_OVERRIDES["qwen/qwen-image-edit"] = "Custom prompt for qwen/qwen-image-edit"
+# MODEL_PROMPT_OVERRIDES["qwen/qwen-image-edit-plus"] = "Custom prompt for qwen/qwen-image-edit-plus"
+# MODEL_PROMPT_OVERRIDES["black-forest-labs/flux-kontext-max"] = "Custom prompt for black-forest-labs/flux-kontext-max"
+# MODEL_PROMPT_OVERRIDES["black-forest-labs/flux-kontext-pro"] = "Custom prompt for black-forest-labs/flux-kontext-pro"
+# MODEL_PROMPT_OVERRIDES["black-forest-labs/flux-pro"] = "Custom prompt for black-forest-labs/flux-pro"
+# MODEL_PROMPT_OVERRIDES["ideogram-ai/ideogram-v3-turbo"] = "Custom prompt for ideogram-ai/ideogram-v3-turbo"
+# MODEL_PROMPT_OVERRIDES["qwen/qwen-image"] = "Custom prompt for qwen/qwen-image"
+# MODEL_PROMPT_OVERRIDES["seedream-4"] = "Custom prompt for seedream-4"
+# MODEL_PROMPT_OVERRIDES["seededit-3-0-i2i-250628"] = "Custom prompt for seededit-3-0-i2i-250628"
 
 MAX_REFERENCE_IMAGES = 3
 CUSTOM_CATEGORY_OPTION = "Others"
@@ -983,6 +1019,33 @@ def download_image_from_url(url: str) -> Optional[Image.Image]:
 
 
 
+def _extract_first_image_from_output(output: Any) -> Optional[Image.Image]:
+    """Return the first usable image from Replicate outputs (urls, base64, nested)."""
+    if output is None:
+        return None
+    if isinstance(output, dict):
+        url = output.get("url")
+        if url:
+            img = download_image_from_url(url)
+            if img:
+                return img
+        data = output.get("b64_json") or output.get("base64")
+        if data:
+            img = image_from_base64(data)
+            if img:
+                return img
+        return _extract_first_image_from_output(output.get("output"))
+    if isinstance(output, (list, tuple)):
+        for item in output:
+            img = _extract_first_image_from_output(item)
+            if img:
+                return img
+        return None
+    if isinstance(output, str):
+        return download_image_from_url(output) or image_from_base64(output)
+    return None
+
+
 async def generate_with_openai_image_model(
     model_name: str,
     prompt: str,
@@ -1080,10 +1143,125 @@ async def generate_with_seededit_model(
     )
 
 
+async def generate_with_replicate_model(
+    model_name: str,
+    prompt: str,
+    image: Optional[Image.Image],
+    input_link: Optional[str],
+) -> Optional[Image.Image]:
+    token = REPLICATE_API_TOKEN
+    if not token:
+        print(f"[info] Replicate token missing; skipping {model_name}.")
+        return None
+    prepared_image, _ = ensure_aspect_ratio_bounds(image)
+    reference_url = build_reference_url(prepared_image, input_link)
+    image_arg = None
+    if prepared_image is not None:
+        image_arg = pil_to_data_uri(prepared_image)
+    elif reference_url:
+        image_arg = reference_url
+
+    model_id = REPLICATE_MODEL_IDS.get(model_name, model_name)
+
+    def _build_input() -> Optional[Dict[str, Any]]:
+        if model_name == "qwen/qwen-image-edit-plus":
+            imgs = []
+            if image_arg:
+                imgs = [image_arg, image_arg]
+            elif reference_url:
+                imgs = [reference_url, reference_url]
+            if not imgs:
+                print(f"[warn] {model_name} requires two images; none provided.")
+                return None
+            return {"image": imgs, "prompt": prompt}
+        if model_name == "qwen/qwen-image-edit":
+            img = image_arg or reference_url
+            if not img:
+                print(f"[warn] {model_name} requires an image; none provided.")
+                return None
+            return {"image": img, "prompt": prompt, "output_quality": 80}
+        if model_name in {"black-forest-labs/flux-kontext-max", "black-forest-labs/flux-kontext-pro"}:
+            img = image_arg or reference_url
+            if not img:
+                print(f"[warn] {model_name} requires an image; none provided.")
+                return None
+            return {"prompt": prompt, "input_image": img, "output_format": "jpg"}
+        if model_name == "black-forest-labs/flux-1.1-pro":
+            return {"prompt": prompt, "prompt_upsampling": True}
+        if model_name == "black-forest-labs/flux-1.1-pro-ultra":
+            return {"prompt": prompt, "aspect_ratio": "3:2"}
+        if model_name == "black-forest-labs/flux-pro":
+            return {"prompt": prompt}
+        if model_name == "ideogram-ai/ideogram-v3-turbo":
+            return {"prompt": prompt, "aspect_ratio": "3:2"}
+        if model_name == "qwen/qwen-image":
+            return {"prompt": prompt, "guidance": 4, "num_inference_steps": 30}
+        payload = {"prompt": prompt}
+        if image_arg:
+            payload["image"] = image_arg
+        return payload
+
+    payload_input = _build_input()
+    if payload_input is None:
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    create_url = f"https://api.replicate.com/v1/models/{model_id}/predictions"
+
+    def _call():
+        try:
+            resp = requests.post(create_url, json={"input": payload_input}, headers=headers, timeout=30)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] Replicate request failed for {model_name}:", exc)
+            return None
+        if resp.status_code not in (200, 201, 202):
+            print(f"[warn] Replicate {model_name} HTTP {resp.status_code}: {resp.text}")
+            return None
+        data = resp.json()
+        status = data.get("status")
+        image_out = _extract_first_image_from_output(data.get("output"))
+        poll_url = data.get("urls", {}).get("get")
+        pred_id = data.get("id")
+        if not poll_url and pred_id:
+            poll_url = f"https://api.replicate.com/v1/predictions/{pred_id}"
+        terminal = {"succeeded", "failed", "canceled"}
+        while image_out is None and status not in terminal and poll_url:
+            try:
+                poll_resp = requests.get(poll_url, headers=headers, timeout=30)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[warn] Replicate poll failed for {model_name}:", exc)
+                break
+            if poll_resp.status_code not in (200, 201, 202):
+                print(f"[warn] Replicate poll HTTP {poll_resp.status_code}: {poll_resp.text}")
+                break
+            payload = poll_resp.json()
+            status = payload.get("status", status)
+            image_out = _extract_first_image_from_output(payload.get("output"))
+            if image_out or status in terminal:
+                break
+            time.sleep(2)
+        if image_out is None:
+            print(f"[warn] Replicate {model_name} returned no image (status={status}).")
+        return image_out
+
+    return await run_blocking(_call)
+
+
 MODEL_GENERATORS: Dict[str, Any] = {
     "gpt-image-1": generate_with_openai_image_model,
     "gpt-image-1-mini": generate_with_openai_image_model,
     "gemini-2.5-flash-image": generate_with_gemini_image_model,
+    "gemini-3-pro-image-preview": generate_with_gemini_image_model,
+    "qwen/qwen-image-edit": generate_with_replicate_model,
+    "qwen/qwen-image-edit-plus": generate_with_replicate_model,
+    "black-forest-labs/flux-kontext-max": generate_with_replicate_model,
+    "black-forest-labs/flux-kontext-pro": generate_with_replicate_model,
+    "black-forest-labs/flux-pro": generate_with_replicate_model,
+    "ideogram-ai/ideogram-v3-turbo": generate_with_replicate_model,
+    "qwen/qwen-image": generate_with_replicate_model,
     "seedream-4": generate_with_seedream_model,
     "seededit-3-0-i2i-250628": generate_with_seededit_model,
 }
@@ -1098,10 +1276,12 @@ async def generate_for_model(
     input_download_link: Optional[str],
     input_view_link: Optional[str],
     output_index: int = 1,
+    model_prompts: Optional[Dict[str, str]] = None,
 ) -> Optional[Image.Image]:
     template = PROMPT_TEMPLATE_SEEDREAM if model_name == "seedream-4" else PROMPT_TEMPLATE
-    prompt = template.format(category=category, description=description)
-    prompt = clamp_prompt_length(prompt)
+    base_prompt = template.format(category=category, description=description)
+    custom_prompt = (model_prompts or {}).get(model_name)
+    prompt = clamp_prompt_length(custom_prompt if custom_prompt else base_prompt)
     generator = MODEL_GENERATORS.get(model_name)
     if not generator:
         raise ValueError(f"Unsupported model: {model_name}")
@@ -1111,7 +1291,8 @@ async def generate_for_model(
         print(f"[warn] {model_name} returned no image.")
         return None
 
-    temp_path = Path(tempfile.gettempdir()) / f"{ts}_{model_name}_gen{output_index}.jpg"
+    safe_model_name = model_name.replace("/", "_").replace(":", "-")
+    temp_path = Path(tempfile.gettempdir()) / f"{ts}_{safe_model_name}_gen{output_index}.jpg"
     out_img.save(temp_path)
     out_download_link, out_view_link = upload_image_to_s3(temp_path, S3_OUTPUT_PREFIX)
     temp_path.unlink(missing_ok=True)
@@ -1148,6 +1329,7 @@ async def generate_all(
     description: str,
     image: Optional[Image.Image],
     output_index: int = 1,
+    model_prompts: Optional[Dict[str, str]] = None,
 ) -> List[Optional[Image.Image]]:
     ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d_%H-%M-%S")
     pil_image = to_pil_image(image)
@@ -1164,6 +1346,7 @@ async def generate_all(
             input_download_link,
             input_view_link,
             output_index,
+            model_prompts=model_prompts,
         )
         for model in MODELS
     ]
@@ -1183,15 +1366,16 @@ def generate_sync(
     description: str,
     image: Any,
     output_index: int = 1,
+    model_prompts: Optional[Dict[str, str]] = None,
 ) -> List[Optional[Image.Image]]:
     with GENERATION_LOCK:
         try:
-            return asyncio.run(generate_all(category, description, image, output_index))
+            return asyncio.run(generate_all(category, description, image, output_index, model_prompts=model_prompts))
         except RuntimeError as exc:
             message = str(exc).lower()
             if "asyncio.run()" in message or "event loop is already running" in message:
                 def _runner() -> List[Optional[Image.Image]]:
-                    return asyncio.run(generate_all(category, description, image, output_index))
+                    return asyncio.run(generate_all(category, description, image, output_index, model_prompts=model_prompts))
 
                 with ThreadPoolExecutor(max_workers=1) as executor:
                     future = executor.submit(_runner)
@@ -1309,6 +1493,12 @@ def main() -> None:
             if img is not None:
                 collected.append(img)
 
+        model_prompts = {
+            name: val.strip()
+            for name, val in MODEL_PROMPT_OVERRIDES.items()
+            if val and val.strip()
+        }
+
         final_category = (
             custom_cat_value.strip()
             if use_custom_category and custom_cat_value
@@ -1324,7 +1514,13 @@ def main() -> None:
                 update_status_text(" Unable to prepare the reference preview from the provided inputs.")
                 st.error(f"Unable to prepare the reference preview: {exc}")
             else:
-                generated_images = generate_sync(final_category, description, reference_image, output_index=1)
+                generated_images = generate_sync(
+                    final_category,
+                    description,
+                    reference_image,
+                    output_index=1,
+                    model_prompts=model_prompts or None,
+                )
                 produced_outputs = sum(1 for img in generated_images if img is not None)
                 status_msg = (
                     f" Combined {len(collected)} reference image(s) & generated {produced_outputs} outputs."
