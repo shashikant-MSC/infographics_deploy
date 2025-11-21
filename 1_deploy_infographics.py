@@ -1459,7 +1459,10 @@ def reset_session_state() -> None:
     """Clear all Streamlit session state and rerun to start fresh."""
     for key in list(st.session_state.keys()):
         del st.session_state[key]
-    st.experimental_rerun()
+    try:
+        st.experimental_rerun()  # Streamlit <=1.31
+    except AttributeError:
+        st.rerun()  # Streamlit >=1.32
 
 
 def main() -> None:
