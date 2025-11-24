@@ -380,7 +380,10 @@ MODELS = [
 ]
 
 # Optional per-model prompt overrides. Leave entries empty or remove keys to use the main prompt.
-#MODEL_PROMPT_OVERRIDES: Dict[str, str] = {}
+MODEL_PROMPT_OVERRIDES: Dict[str, str] = {
+    # Pre-seeded so Gemini 3 uses a separate prompt; edit or remove as needed.
+    #"gemini-3-pro-image-preview": "make a infographic image",
+}
 # Uncomment and set any of the lines below to override that model's prompt:
 # MODEL_PROMPT_OVERRIDES["gpt-image-1"] = "Custom prompt for gpt-image-1"
 # MODEL_PROMPT_OVERRIDES["gpt-image-1-mini"] = "Custom prompt for gpt-image-1-mini"
