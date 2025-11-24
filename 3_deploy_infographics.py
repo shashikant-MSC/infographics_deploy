@@ -303,6 +303,7 @@ STRICT PRODUCT FIDELITY (NON-NEGOTIABLE)
 - Dont add ratings or starts to the infographic image if not given in description.
 - Dont provide any false information like trusted by 50000 users if not given in description.
 - use proper color combination so that text and background should be clearly visible.
+- use proper text size so that the overall infographic should look premium and text should be clearly visible.
 - Dont give any arrow marks.
 - Please verify anything should not be wrong(everything should be according to prompt) if anything wrong please correct it or remove it
 
