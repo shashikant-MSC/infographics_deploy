@@ -306,6 +306,7 @@ STRICT PRODUCT FIDELITY (NON-NEGOTIABLE)
 - use proper text size so that the overall infographic should look premium and text should be clearly visible.
 - Dont give any arrow marks.
 - Please verify anything should not be wrong(everything should be according to prompt) if anything wrong please correct it or remove it
+- Dont give any wrong information.
 
 INFOGRAPHIC CONTENT STRUCTURE
 - HEADLINE (≤ 10 words): A bold, premium, benefit-driven message.
