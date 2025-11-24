@@ -300,7 +300,7 @@ STRICT PRODUCT FIDELITY (NON-NEGOTIABLE)
 - The product must remain EXACTLY as shown in the reference image.
 - No added or removed elements that alter meaning.
 - No CGI appearance, no unrealistic reflections, no fake glow.
-- Dont add ratings or starts to the infographic if not given in description.
+- Dont add ratings or starts to the infographic image if not given in description.
 - Dont provide any false information like trusted by 50000 users if not given in description.
 - use proper color combination so that text and background should be clearly visible.
 - Dont give any arrow marks.
