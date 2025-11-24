@@ -364,19 +364,19 @@ PROMPT_TEMPLATE_SEEDREAM = PromptTemplate.from_template(
 ).partial(main_prompt=MAIN_PROMPT)
 
 MODELS = [
-    "gpt-image-1",
-    "gpt-image-1-mini",
+    #"gpt-image-1",
+    #"gpt-image-1-mini",
     "gemini-2.5-flash-image",
     "gemini-3-pro-image-preview",
-    "qwen/qwen-image-edit",
-    "qwen/qwen-image-edit-plus",
-    "black-forest-labs/flux-kontext-max",
-    "black-forest-labs/flux-kontext-pro",
-    "black-forest-labs/flux-pro",
-    "ideogram-ai/ideogram-v3-turbo",
-    "qwen/qwen-image",
     "seedream-4",
-    "seededit-3-0-i2i-250628",
+    # "qwen/qwen-image-edit",
+    # "qwen/qwen-image-edit-plus",
+    # "black-forest-labs/flux-kontext-max",
+    # "black-forest-labs/flux-kontext-pro",
+    # "black-forest-labs/flux-pro",
+    # "ideogram-ai/ideogram-v3-turbo",
+    # "qwen/qwen-image",
+    # "seededit-3-0-i2i-250628",
 ]
 
 # Optional per-model prompt overrides. Leave entries empty or remove keys to use the main prompt.
@@ -1192,19 +1192,19 @@ async def generate_with_replicate_model(
 
 
 MODEL_GENERATORS: Dict[str, Any] = {
-    "gpt-image-1": generate_with_openai_image_model,
-    "gpt-image-1-mini": generate_with_openai_image_model,
+    #"gpt-image-1": generate_with_openai_image_model,
+    #"gpt-image-1-mini": generate_with_openai_image_model,
     "gemini-2.5-flash-image": generate_with_gemini_image_model,
     "gemini-3-pro-image-preview": generate_with_gemini_image_model,
-    "qwen/qwen-image-edit": generate_with_replicate_model,
-    "qwen/qwen-image-edit-plus": generate_with_replicate_model,
-    "black-forest-labs/flux-kontext-max": generate_with_replicate_model,
-    "black-forest-labs/flux-kontext-pro": generate_with_replicate_model,
-    "black-forest-labs/flux-pro": generate_with_replicate_model,
-    "ideogram-ai/ideogram-v3-turbo": generate_with_replicate_model,
-    "qwen/qwen-image": generate_with_replicate_model,
     "seedream-4": generate_with_seedream_model,
-    "seededit-3-0-i2i-250628": generate_with_seededit_model,
+    # "qwen/qwen-image-edit": generate_with_replicate_model,
+    # "qwen/qwen-image-edit-plus": generate_with_replicate_model,
+    # "black-forest-labs/flux-kontext-max": generate_with_replicate_model,
+    # "black-forest-labs/flux-kontext-pro": generate_with_replicate_model,
+    # "black-forest-labs/flux-pro": generate_with_replicate_model,
+    # "ideogram-ai/ideogram-v3-turbo": generate_with_replicate_model,
+    # "qwen/qwen-image": generate_with_replicate_model,
+    # "seededit-3-0-i2i-250628": generate_with_seededit_model,
 }
 
 
@@ -1548,7 +1548,7 @@ def main() -> None:
                 st.session_state[choice_key] = None
 
             with col_image:
-                st.image(img, use_container_width=True)
+                st.image(img, width="stretch")
 
             with col_react:
                 st.write("Reaction")
