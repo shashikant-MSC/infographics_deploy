@@ -303,7 +303,8 @@ STRICT PRODUCT FIDELITY (NON-NEGOTIABLE)
 - Dont add ratings or starts to the infographic if not given in description.
 - Dont provide any false information like trusted by 50000 users if not given in description.
 - use proper color combination so that text and background should be clearly visible.
-- If giving arrow marks, make sure they are pointing to the correct product features.
+- Dont give any arrow marks.
+- Please verify anything should not be wrong(everything should be according to prompt) if anything wrong please correct it or remove it
 
 INFOGRAPHIC CONTENT STRUCTURE
 - HEADLINE (≤ 10 words): A bold, premium, benefit-driven message.
